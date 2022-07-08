@@ -1,0 +1,186 @@
+(function ($) {
+  window.LxForm = function () { }
+
+  $.extend(LxForm, {
+
+    /** Initialize. */
+    init: function () {
+      this.watchForm()
+      this.watchPassword()
+      this.watchCountry()
+    },
+
+    watchForm: function () {
+      var form = this.getForm()
+
+      $.validator.addMethod('customEmail', function (value, element) {
+        return this.optional(element) || /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i.test(value)
+      }, 'Please enter a valid email address.')
+
+      form.validator = form.validate({
+        onsubmit: false,
+        rules: {
+          password_1: {
+            required: true,
+            minlength: 8
+          },
+          password: {
+            required: true,
+            minlength: 8
+          },
+          password_2: {
+            equalTo: '#password_1'
+          },
+          password_again: {
+            equalTo: '#password'
+          },
+          account_email: {
+            required: true,
+            customEmail: true
+          },
+          billing_email: {
+            required: true,
+            customEmail: true
+          }
+        },
+        messages: {
+          password_1: {
+            required: 'Enter a password',
+            minlength: 'Use 8 characters or more for your password'
+          },
+          password_2: {
+            required: "Those passwords didn't match.Try again.",
+            equalTo: "Those passwords didn't match.Try again."
+          },
+          password: {
+            required: 'Enter a password',
+            minlength: 'Use 8 characters or more for your password'
+          },
+          password_again: {
+            required: "Those passwords didn't match.Try again.",
+            equalTo: "Those passwords didn't match.Try again."
+          }
+        }
+      })
+
+      form.find('button[type="submit"]').click(function (e) {
+        e.preventDefault()
+
+        if (form.validator.form()) {
+          // validated.
+          LxForm.submitForm(form, LxForm.type)
+        } else {
+          // failed.
+          console.log('failed')
+        }
+      })
+    },
+
+    submitForm: function (form, type) {
+      form.block()
+
+      if (type === 'general') {
+        form.submit()
+        return
+      }
+      var formData = form.serialize()
+
+      formData += '&' + $.param({ action: 'lx_' + type })
+
+      var posting = $.post(lx_post.ajax_url, formData)
+
+      // post done
+      posting.done(function (data) {
+        form.unblock()
+        toka_toast.show_notice(data.message, data.is_error, 1)
+
+        if (data.is_error === 0) {
+          if (!data.redirect_url) {
+            data.redirect_url = lx_post.redirecturl
+          }
+
+          document.location.href = data.redirect_url
+        }
+      })
+    },
+
+    getForm: function () {
+      if ($('.js-form-signup').length) {
+        LxForm.type = 'signup'
+        return $('.js-form-signup')
+      } else if ($('.js-form-login').length) {
+        LxForm.type = 'login'
+        return $('.js-form-login')
+      } else {
+        if ($('.js-form').data('ajax_action')) {
+          LxForm.type = $('.js-form').data('ajax_action')
+        } else {
+          LxForm.type = 'general'
+        }
+
+        return $('.js-form')
+      }
+    },
+
+    watchPassword: function () {
+      // toggle password visibility
+      $('.toggle-password').on('click', function (e) {
+        e.preventDefault()
+        $(this)
+          .find('.icon')
+          .toggleClass('eye eye-close')
+        var input = $(this).siblings('.form-control')
+
+        if (input.attr('type') === 'password') {
+          input.attr('type', 'text')
+        } else {
+          input.attr('type', 'password')
+        }
+      })
+    },
+
+    watchCountry: function () {
+      if (!$('#billing_country').length && !$('#shipping_country').length) {
+        return
+      }
+
+      $('#billing_country, #shipping_country').change(function () {
+        var addressType =
+          $(this)[0].id === 'billing_country' ? 'billing' : 'shipping'
+
+        var selectedCountry = $(this)
+          .find('option:selected')
+          .val()
+
+        var id = '#' + addressType
+
+        if (selectedCountry !== 'MY') {
+          // Not malaysia, hide state and postcode.
+          $(id + '_state_field').hide()
+
+          if (selectedCountry === 'BN') {
+            $(id + '_postcode').val('BRUNEI')
+            // $(id + '_state').val('BRUNEI')
+          } else {
+            $(id + '_postcode').val('SINGAPORE')
+            // $(id + '_state').val('SINGAPORE')
+          }
+          $(id + '_postcode_field').addClass('d-none')
+
+          return
+        }
+
+        // is malaysia. show state and postcode field.
+        $(id + '_state_field').show()
+
+        if (!$.isNumeric($(id + '_postcode').val())) {
+          // postcode is not number, reset it.
+          $(id + '_postcode').val('')
+        }
+
+        $(id + '_postcode_field').removeClass('d-none')
+      }).change()
+    }
+  })
+  LxForm.init()
+})(jQuery)
