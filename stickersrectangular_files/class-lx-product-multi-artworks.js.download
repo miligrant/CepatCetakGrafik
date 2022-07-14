@@ -1,0 +1,50 @@
+(function ($) {
+  window.LxProductMultiArtworks = function () { }
+
+  $.extend(LxProductMultiArtworks, {
+
+    /** Initialize. */
+    init: function () {
+      this.watchModal()
+      this.watchInput()
+    },
+    watchInput: function () {
+      $('[name="artwork_quantity"]').change(function () {
+        var quantity = $(this).siblings('label').data('js-job-quantity')
+        var total = $(this).siblings('.artwork_total').html()
+
+        $('.job_summary__quantity').text(quantity)
+        $('.job_summary__total').html(total)
+
+        $('input[name="NoOfDesign"]').val(quantity)
+        LxProductSingle.updateDataField()
+
+        $('#multiArtworkBtn').removeClass('disabled').click(function (e) {
+          if (lx_post_multi_artworks.is_user_logged_in) {
+            // only submit if user is logged in.
+            $('.modal--multi-jobs').block()
+            $('#multiArtworkBtn').addClass('disabled')
+            LxProductSingle.tryToSubmitForm(e)
+          } else {
+            top.location.replace(lx_post_multi_artworks.login_url)
+          }
+        })
+      })
+    },
+    watchModal: function () {
+      $('#ModalMultiJobs').on('show.bs.modal', LxProductMultiArtworks.resetModal)
+      $('#ModalMultiJobs').on('hide.bs.modal', LxProductMultiArtworks.resetModal)
+    },
+
+    resetModal: function () {
+      $('[name="artwork_quantity"]:checked').prop('checked', false)
+      $('input[name="NoOfDesign"]').val(0)
+      $('.job_summary__quantity').text('-')
+      $('.job_summary__total').html('-')
+      $('#multiArtworkBtn').addClass('disabled').off('click')
+    }
+
+  })
+
+  LxProductMultiArtworks.init()
+})(jQuery)
