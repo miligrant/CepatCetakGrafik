@@ -1,0 +1,49 @@
+(function ($) {
+    $(function () {
+        var slick_default = {
+            prevArrow: '<button type="button" class="slick-prev">' + icon_arrow + '</use></svg></button>',
+            nextArrow: '<button type="button" class="slick-next">' + icon_arrow + '</use></svg></button>',
+            dots: false,
+            infinite: true,
+            mobileFirst: true
+        }
+
+        var slick_6 = $.extend({}, slick_default, {
+            slidesPerRow: 4,
+            rows: 2,
+            responsive: [
+                {
+                    breakpoint: 840,
+                    settings: {
+                        slidesPerRow: 5,
+                        rows: 1
+                    }
+                },
+                {
+                    breakpoint: 1200,
+                    settings: {
+                        slidesPerRow: 6,
+                        rows: 1
+                    }
+                }
+            ]
+        })
+
+        $('.js-slick--6').slick(slick_6)
+
+        var slick_4 = $.extend({}, slick_default, {
+            slidesPerRow: 3,
+            rows: 1,
+            responsive: [
+                {
+                    breakpoint: 840,
+                    settings: {
+                        slidesPerRow: 4
+                    }
+                }
+            ]
+        })
+
+        $('.js-slick--4').slick(slick_4)
+    })
+})(jQuery)

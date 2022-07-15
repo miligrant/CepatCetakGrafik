@@ -1,0 +1,74 @@
+(function ($) {
+  window.LxStickySidebarNew = function () { }
+
+  $.extend(LxStickySidebarNew, {
+    init: function () {
+      this.watchScroll()
+
+      $(window).resize(function () {
+        LxStickySidebarNew.watchScroll()
+      })
+    },
+    watchScroll: function () {
+      if (!window.matchMedia('(min-width: 1179px)').matches) {
+        $(window).off('scroll.sidebar')
+        
+        $('.js-lx-sidebar-fixed').css({
+          width: '',
+          position: 'static'
+        })
+        return
+      }
+
+      if ($('.js-lx-section-fixed')[0]) {
+        var sidebar = $('.js-lx-sidebar-fixed')
+       
+        sidebar.css({
+          width: sidebar.outerWidth()
+        })
+
+        var paddingTop = sidebar.data('pt')
+        var sectionPaddingTop = sidebar.data('section-pt')
+
+        $(window).on('scroll.sidebar', function () {
+          var mainSectionHeight = $('.js-lx-main-fixed').outerHeight()
+          var scrolled = $(window).scrollTop()
+          var sidebarTop = $('.js-lx-section-fixed').position().top
+          var sectionHeight = $('.js-lx-section-fixed').height()
+          var sidebarHeight = sidebar.outerHeight() + paddingTop
+          var r = sidebarTop + sectionHeight - sidebarHeight
+
+          if (sidebarHeight < mainSectionHeight) {
+            
+            
+            if (sidebarTop < scrolled - paddingTop) {
+              sidebar.css({
+                position: 'fixed',
+                top: paddingTop
+              })
+            } else {
+              sidebar.css({
+                position: 'static'
+              })
+            }
+
+            if (r < scrolled - sectionPaddingTop) {
+              var o = r - scrolled + paddingTop + sectionPaddingTop
+              sidebar.css({
+                top: o
+              })
+            }
+          } else {
+            sidebar.css({
+              top: 0,
+              position: 'static'
+            })
+          }
+        })
+      }
+    }
+
+  })
+
+  LxStickySidebarNew.init()
+})(jQuery)
