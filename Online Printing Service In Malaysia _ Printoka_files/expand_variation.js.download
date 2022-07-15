@@ -1,0 +1,26 @@
+( function( $ ) {
+	$.fn.extend( {
+		toggleText: function( a, b ) {
+			return this.text( this.text() == b ? a : b );
+		}
+	} );
+
+	$( document ).ready( function() {
+		if ( $( "a.show_more" ).length ) {
+			$( "a.show_more" ).click( function( e ) {
+				e.preventDefault();
+
+				$this = $( this );
+
+				$variation = $this.parent().siblings( ".variation" );
+
+				$this.toggleClass( "expand" ).toggleText( "Show More", "Show Less" );
+				$variation.toggleClass( "expand" );
+
+				setTimeout( function() {
+					pr_nicescroll.resize();
+				}, 500 );
+			} );
+		}
+	} );
+} )( jQuery );
