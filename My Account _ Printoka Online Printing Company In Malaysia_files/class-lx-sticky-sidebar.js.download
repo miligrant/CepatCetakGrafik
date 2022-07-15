@@ -1,0 +1,69 @@
+(function ($) {
+  window.LxStickySidebar = function () { }
+
+  $.extend(LxStickySidebar, {
+    init: function () {
+      this.watchScroll()
+
+      $(window).resize(function () {
+        LxStickySidebar.watchScroll()
+      })
+    },
+    watchScroll: function () {
+      if (!window.matchMedia('(min-width: 1179px)').matches) {
+        $(window).off('scroll.sidebar')
+        $('.js-sidebar-fixed').css({
+          width: '',
+          position: 'static'
+        })
+        return
+      }
+      if ($('.js-section-fixed')[0]) {
+        var sidebar = $('.js-sidebar-fixed')
+        sidebar.css({
+          width: sidebar.outerWidth()
+        })
+
+        $(window).on('scroll.sidebar', function () {
+          var productConfiguration = $('.js-main-fixed').outerHeight()
+          var scrolled = $(window).scrollTop()
+          var sidebarTop = $('.js-section-fixed').position().top
+          var sectionHeight = $('.js-section-fixed').height()
+          var sidebarHeight = sidebar.outerHeight() + 20
+          var r = sidebarTop + sectionHeight - sidebarHeight
+
+          if (sidebarHeight < productConfiguration) {
+            var paddingTop = 20
+            var sectionPaddingTop = 48
+
+            if (sidebarTop < scrolled - 20) {
+              sidebar.css({
+                position: 'fixed',
+                top: paddingTop
+              })
+            } else {
+              sidebar.css({
+                position: 'static'
+              })
+            }
+
+            if (r < scrolled - sectionPaddingTop) {
+              var o = r - scrolled + paddingTop + sectionPaddingTop
+              sidebar.css({
+                top: o
+              })
+            }
+          } else {
+            sidebar.css({
+              top: 0,
+              position: 'static'
+            })
+          }
+        })
+      }
+    }
+
+  })
+
+  LxStickySidebar.init()
+})(jQuery)
