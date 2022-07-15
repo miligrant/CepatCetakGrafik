@@ -1,0 +1,643 @@
+(function ($) {
+  window.LxProductSingle = function () { }
+
+  $.extend(LxProductSingle, {
+
+    /** Initialize. */
+    init: function () {
+      LxProductSingle.updateDataField()
+
+      $('[data-toggle="tooltip"]').tooltip()
+
+      LxProductSingle.typingTimer = ''
+
+      this.watchInputs()
+      this.watchCustomSize()
+      this.watchHeaderRow()
+      this.watchValidate()
+      this.watchPlyColor()
+      this.watchNumbering()
+      this.watchPackagingSample()
+      this.watchBinding()
+      this.watchModal()
+    },
+    initSpecModal: function (activeIndex) {
+      var modal = $('.modal.show .modal--spec')
+
+      if (!modal.find('.js-slick--spec').hasClass('slick-initialized')) {
+        var modalID = modal.parent().attr('id')
+
+        modal.find('.js-slick--spec').removeClass('d-none').slick({
+          slidesToShow: 1,
+          slidesToScroll: 1,
+          arrows: false,
+          fade: true
+        })
+
+        $('#' + modalID + ' .spec-thumbnails > div').on('click', function () {
+          $('#' + modalID + ' .spec-thumbnails > div.active').removeClass('active')
+          $(this).addClass('active')
+          $('#' + modalID + ' .js-slick--spec').slick('slickGoTo', $(this).index())
+        })
+
+        $('.spec-thumbnails').niceScroll(pr_nicescroll.config)
+      }
+      $('.spec-thumbnails').getNiceScroll().resize()
+      modal.find('.spec-thumbnails > div:eq(' + activeIndex + ')').trigger('click')
+    },
+    watchModal: function () {
+      $('.option__cards > .modal').on('shown.bs.modal', function (e) {
+        LxProductSingle.initSpecModal($(e.relatedTarget).data('index'))
+        // $(this).find('.slick-initialized').
+      })
+    },
+    watchBinding: function () {
+      if (!$('#lx_product_form .js-binding').length) {
+        // no binding, exit
+        return
+      }
+
+      this.hasBinding = true
+
+      // get the binding index.
+      this.BindingIndex = $('.js-binding .option__cards input[type="radio"]').first().data('index')
+
+      // add the selected price as oldParamSize for comparison reference.
+      var selectedSize = $("[name='ProductSizeParam']").val()
+
+      var $oldSize = $('<input>').attr({
+        type: 'hidden',
+        name: 'oldSize',
+        value: selectedSize
+      })
+
+      $oldSize.appendTo('#lx_product_form')
+    },
+    watchPackagingSample: function () {
+      if (!$('#lx_product_form .product__option.sample_quantity ').length) {
+        // no sample quantity, exit
+        return
+      }
+
+      var $rows = $('.sample_quantity')
+      var $summary = $('.summary__packaging_sample')
+      this.resetPackagingSampleQuantity($rows, $summary)
+
+      $('input[name="packaging_sample"]').change(function () {
+        LxProductSingle.resetPackagingSampleQuantity($rows, $summary)
+
+        if ($(this).data('days_need') !== 0) {
+          $('.js-sample_quantity_' + $(this).val()).show()
+          $('.summary__days_need').text($(this).data('days_need'))
+          LxProductSingle.updateSampleQuantityFee($('.product__option.js-sample_quantity_' + $(this).val() + ' select.select--price'))
+          $summary.show()
+        }
+      })
+
+      $('.product__option.sample_quantity select').change(function () {
+        if ($(this).data('days_need') === 0) {
+          return
+        }
+        LxProductSingle.updateSampleQuantityFee($(this))
+      })
+    },
+    updateSampleQuantityFee: function (ele) {
+      var price = ele.next().find('.option').data('price')
+      $('.summary__packaging_sample_fee').text(price)
+    },
+    resetPackagingSampleQuantity: function ($rows, $summary) {
+      $rows.hide()
+      $summary.hide()
+    },
+    watchNumbering: function () {
+      if (!$('#lx_product_form input[name="starting_numbering"]').length) {
+        // no staring numbering, exit
+        return
+      }
+
+      var $input = $('#lx_product_form input[name="starting_numbering"]')
+      var index = $input.data('index')
+      var $row = $input.closest('.product__option')
+      var $summaryRow = $('.summary__row .summary__' + index).closest('.summary__row')
+
+      var numberingIndex = index - 1
+      var $numberingInput = $('[name="VariantList[' + numberingIndex + ']"]')
+
+      this.numbering = {
+        input: $input,
+        index: index,
+        row: $row,
+        summaryRow: $summaryRow,
+        numberingInput: $numberingInput
+      }
+
+      this.resetNumbering()
+
+      $numberingInput.change(function () {
+        if (~$(this).attr('id').indexOf('yes')) {
+          // show starting numbering
+          LxProductSingle.numbering.row.show()
+          LxProductSingle.numbering.summaryRow.show()
+          LxProductSingle.numbering.input.removeClass('d-none')
+          LxProductSingle.isAllFieldsSelected()
+        } else {
+          // hide starting numbering
+          LxProductSingle.resetNumbering()
+        }
+      })
+    },
+
+    resetNumbering: function () {
+      this.numbering.row.hide()
+      this.numbering.summaryRow.hide()
+      this.numbering.input.val('')
+      this.numbering.input.addClass('d-none')
+    },
+
+    watchPlyColor: function () {
+      if (!$('#lx_product_form select[name="NoOfPly"]').length) {
+        // no number of ply, exit
+        return
+      }
+
+      this.$plyColors = $('.product__option.ply-color')
+      this.$plyColorsSummary = $('.summary__rows .ply-color')
+
+      $('#lx_product_form select[name="NoOfPly"]').change(function () {
+        LxProductSingle.updatePlyColor($(this))
+      })
+
+      this.updatePlyColor($('#lx_product_form select[name="NoOfPly"]'))
+    },
+
+    /** Show or hide the ply colors option */
+    updatePlyColor: function (ele) {
+      // hide all
+      this.$plyColors.hide()
+      this.$plyColorsSummary.hide()
+
+      var selectedPly = ele.find(':checked').val()
+
+      for (let i = 0; i < selectedPly; i++) {
+        $(this.$plyColors[i])
+          .add($(this.$plyColorsSummary[i]))
+          .removeClass('d-none')
+          .show()
+      }
+
+      pr_nicescroll.resize()
+    },
+
+    /**
+   * Get form data.
+   * @returns string form data in url encoded params
+   */
+    getFormData: function () {
+      var $form = $('#lx_product_form')
+      var data = $form.serialize()
+
+      if (data.indexOf('VariantList') === -1) {
+        // no variant list provide, set a blank one
+        data += '&VariantList%5B%5D=0'
+      }
+
+      return data
+    },
+
+    /** Set selected data text, to be displayed in cart */
+    getSelectedDataText: function (form_data) {
+      var selected_text = form_data
+
+      $('.option__content input:checked, .option__content select').each(function () {
+        var text = LxProductSingle.getEleLabel($(this))
+        var name = $(this).attr('name') + '_Text'
+
+        // contain [], is variants
+        if (name.indexOf('VariantList[') >= 0) {
+          name = 'VariantList_Text[]'
+        }
+        if (name.indexOf('VariantListContent[') >= 0) {
+          name = 'VariantListContent_Text[]'
+        }
+        if (name.indexOf('VariantListCover[') >= 0) {
+          name = 'VariantListCover_Text[]'
+        }
+
+        var dataText = {}
+        dataText[name] = text
+
+        selected_text += '&' + $.param(dataText)
+      })
+
+      return selected_text
+    },
+
+    /** watch for submit button click and stop it if form is not validate */
+    watchValidate: function () {
+      LxProductSingle.validator = $('#lx_product_form').validate({
+        onsubmit: false,
+        ignore: '.d-none',
+        rules: {
+          starting_numbering: {
+            required: true,
+            maxlength: 7,
+            number: true
+          }
+        }
+      })
+
+      $(".product__summary button[type='submit']").click(LxProductSingle.tryToSubmitForm)
+    },
+
+    tryToSubmitForm: function (e) {
+      e.preventDefault()
+
+      if (LxProductSingle.validator.form()) {
+        //  validated.
+        $('form.product__summary').submit()
+      } else {
+        var $firstError = $('input.error').first()
+        $firstError.closest('.product__option').removeClass('option__collapse')
+
+        pr_nicescroll.re_init()
+        $firstError.focus()
+
+        if ($('#ModalMultiJobs.show').length) {
+          $('.modal--multi-jobs').unblock()
+          $('#multiArtworkBtn').removeClass('disabled')
+        }
+      }
+    },
+
+    /** Watch for header click */
+    watchHeaderRow: function () {
+      $('.option__header').click(function () {
+        $(this).parent().removeClass('option__collapse')
+        pr_nicescroll.re_init()
+      })
+
+      $('.option__header__close .icon').click(function (e) {
+        $(this).closest('.product__option').addClass('option__collapse')
+        pr_nicescroll.re_init()
+        $(window).scroll()
+        e.stopPropagation()
+      })
+    },
+
+    /**
+     * Get price for non update input.
+     * The new value is same as previous value, but subtotal not calculate yet.
+     */
+    getPriceForNonUpdateInput: function () {
+      if (!$('.summary__subtotal').find('.amount').length) {
+        // subtotal not calculated yet. calculate now.
+        LxProductSingle.getPrice()
+      }
+    },
+
+    updateSummaryAndGetPrice: function (ele) {
+      LxProductSingle.updateSummaryRow(ele)
+      LxProductSingle.getPriceForNonUpdateInput()
+    },
+
+    updateInputText: function (ele) {
+      if (!LxProductSingle.validator.form()) {
+        return false
+      }
+
+      LxProductSingle.updateSummaryAndGetPrice(ele)
+    },
+
+    /** Watch for input changes */
+    watchInputs: function () {
+      $('#lx_product_form input:not(.custom_size_input), #lx_product_form select').off().click(function () {
+        if ($(this).is(':checked')) {
+          LxProductSingle.updateSummaryAndGetPrice($(this))
+        }
+      }).change(function () {
+        if ($(this).is('input[type="text"]')) {
+          clearTimeout(LxProductSingle.typingTimer)
+          if ($(this).val()) {
+            LxProductSingle.typingTimer = setTimeout(LxProductSingle.updateInputText, 1000, $(this))
+          }
+
+          $(this).blur(function () {
+            clearTimeout(LxProductSingle.typingTimer)
+            LxProductSingle.updateInputText($(this))
+          })
+          return false
+        }
+
+        if (LxProductSingle.hasBinding && $(this).attr('name') === 'ProductSizeParam') {
+          LxProductSingle.checkBinding()
+        } else {
+          if (!$(this).is('select')) {
+            LxProductSingle.getPrice()
+          }
+        }
+      })
+
+      $('#lx_product_form select').on('selectize:close', function () {
+        var text = $(this).siblings('.selectize-control').find('.selectize-input .item').text()
+
+        LxProductSingle.updateSummaryRow($(this), text)
+        LxProductSingle.getPrice()
+      })
+
+      $('[name="upload_now"]').click(function (e) {
+        if (LxProductSingle.validator.form()) {
+          $('form.product__summary').attr('action', '/index.php/upload').submit()
+        }
+      })
+    },
+
+    // check if need to update binding
+    checkBinding: function () {
+      var selectedSize = $("[name='ProductSizeParam']:checked").val()
+
+      if (selectedSize === $("[name='oldSize']").val()) {
+        // same as the previous one, no need update binding.
+        LxProductSingle.getPrice()
+        return
+      }
+
+      // size change.
+      // update the old size.
+      $("[name='oldSize']").val(selectedSize)
+
+      var form_data = $.param({
+        ProductSizeParam: selectedSize,
+        ProductID: $('[name="ProductID"]').val(),
+        BindingIndex: this.BindingIndex,
+        action: 'printoka_get_binding_options'
+      })
+
+      var posting = $.post(lx_post.ajax_url, form_data)
+
+      // post done
+      posting.done(function (data) {
+        // ####1
+        $('.js-binding .option__cards').html(data)
+        LxProductSingle.watchInputs()
+        // LxProductSingle.watchValidate()
+        LxProductSingle.watchPlyColor()
+        $('[name="VariantList[' + LxProductSingle.BindingIndex + ']"]:checked').prop('checked', false).change()
+        LxProductSingle.setBindingToDefault(LxProductSingle.BindingIndex)
+      })
+    },
+
+    setBindingToDefault: function (index) {
+      $('.option__header__value .summary__' + index).addClass('text-primary').text('Please Select')
+      $('.summary__row .summary__' + index).text('-')
+    },
+
+    // watch for the custom size, get new price, and update summary.
+    watchCustomSize: function () {
+      if (!$('#submit_custom_size').length) {
+        return
+      }
+
+      $('#submit_custom_size').click(function (e) {
+        e.preventDefault()
+
+        // make sure the form is validated.
+        if (!LxProductSingle.validator.form()) {
+          // form not validated, exit.
+          return
+        }
+
+        // form is validated. update the size.
+        if ($("[name='ProductSizeParam']").data('calc_size')) {
+          LxProductSingle.calcPackagingSize()
+        } else {
+          LxProductSingle.updateCustomSize()
+        }
+      })
+    },
+    // calculate packaging size.
+    calcPackagingSize: function () {
+      var form_data = $('#lx_product_form').serialize()
+
+      form_data +=
+        '&' +
+        $.param({
+          action: 'printoka_get_packaging_size'
+        })
+
+      var posting = $.post(lx_post.ajax_url, form_data)
+
+      // post done
+      posting.done(function (data) {
+        $('.product__summary').unblock()
+
+        if (data.Result === 'YES') {
+          $('#calc_packaging_error').addClass('d-none')
+          var newSizeParam = data.OpenSizeX + ' x ' + data.OpenSizeY + ' x 1'
+          var newSizeText =
+            $("[name='Length']").val() +
+            'mm (L) x ' +
+            $("[name='Width']").val() +
+            'mm (W) x ' +
+            $("[name='Height']").val() +
+            'mm (H)'
+
+          LxProductSingle.updateCustomSizeValue(newSizeParam, newSizeText)
+        } else {
+          $('#calc_packaging_error').removeClass('d-none')
+        }
+      })
+    },
+    // set custom size value, not for 3 dimension packaging.
+    updateCustomSize: function () {
+      var i = 0
+      var newSizeParam = ''
+      var newSizeText = ''
+
+      $('input.custom_size_input').each(function () {
+        if (i > 0) {
+          newSizeParam += ' x '
+          newSizeText += ' x '
+        }
+
+        newSizeParam += $(this).val()
+        newSizeText += $(this).val() + $(this).data('unit') + ' (' + $(this).data('initial') + ')'
+
+        i++
+      })
+
+      // add the last x1 to match the api format: 20 x 20 x 1.
+      if (i === 2) {
+        newSizeParam += ' x 1'
+      }
+
+      // only has single dimension, is round sticker.
+      if (i === 1) {
+        newSizeParam += ' x ' + newSizeParam + ' x 1'
+      }
+
+      this.updateCustomSizeValue(newSizeParam, newSizeText)
+    },
+
+    updateCustomSizeValue: function (newSizeParam, newSizeText) {
+      $('[name="ProductSizeParam"]').val(newSizeParam)
+      $('[name="inputed_custom_size"]').val(newSizeText)
+
+      this.updateSummaryRow($('[name="ProductSizeParam"]'), newSizeText)
+
+      // console.log('custom size updated. getting price.')
+      this.getPrice()
+    },
+
+    getEleLabel: function (ele) {
+      var text = ''
+      var index = ele.data('index')
+
+      if (ele.attr('type') === 'text') {
+        text = ele.val()
+      } else if (!ele.attr('type')) {
+        // is select
+        text = ele.find(':checked').text()
+      } else if (ele.attr('type') !== 'radio') {
+        text = ele.text()
+      }
+      // not radio input, can just use the input text.
+
+      // try look in card label.
+      if (!text) {
+        text = $('.option__' + index + ' input:checked + label .option__label').text()
+      }
+
+      return text
+    },
+
+    /** Update summary row */
+    updateSummaryRow: function (ele, text) {
+      var index = ele.data('index')
+
+      if (!text) {
+        text = LxProductSingle.getEleLabel(ele)
+      }
+
+      if (!text) {
+        return
+      }
+
+      $('.summary__' + index).text(text)
+      $('.option__header__value .summary__' + index).removeClass('text-disabled').removeClass('text-primary')
+
+      // collapse the option row
+      ele.closest('.product__option').addClass('option__collapse')
+      $(window).scroll()
+      pr_nicescroll.re_init()
+
+      LxProductSingle.updateShipOutDate(ele)
+    },
+
+    /** Update ship out date */
+    updateShipOutDate: function (ele) {
+      if (ele.attr('name') !== 'printing_speed') {
+        return
+      }
+
+      var text = ele.data('days_need') + ' working days'
+
+      if (ele.val() === 'UrgentDay') {
+        text += '<span class="d-block text-primary">(Urgent)</span>'
+      }
+
+      $('.summary__shipout_date').html(text)
+    },
+
+    /**
+     * Update data field.
+     */
+    updateDataField: function () {
+      var form_data = LxProductSingle.getFormData()
+      $("[name='_item[data]']").val(LxProductSingle.getSelectedDataText(form_data))
+    },
+
+    isAllFieldsSelected: function () {
+      var nonSelectedFields = $('.product__option:visible').find('.option__header__value .text-disabled, .option__header__value .text-primary')
+
+      if (!nonSelectedFields.length) {
+        // all fields are selected.
+        return 2
+      }
+
+      if (nonSelectedFields.first().hasClass('summary__printing_speed')) {
+        // printing speed is the only one and not selected, so consider all fields selected.
+        return 1
+      }
+
+      nonSelectedFields.each(function () {
+        $(this).removeClass('text-disabled').addClass('text-primary')
+      })
+
+      $('form.product__summary').addClass('disabled')
+
+      return 0
+    },
+
+    /** Get price from API */
+    getPrice: function () {
+      if (LxProductSingle.isAllFieldsSelected() === 0) {
+        // got fields didn't check yet.
+        return
+      }
+
+      // console.log('get price')
+
+      $('.product__summary').block()
+      LxProductSingle.updateDataField()
+      var form_data = LxProductSingle.getFormData()
+
+      // console.log(form_data)
+
+      form_data +=
+        '&' +
+        $.param({
+          action: 'printoka_get_api_price'
+        })
+
+      var posting = $.post(lx_post.ajax_url, form_data)
+
+      // post done
+      posting.done(function (data) {
+        $('.product__summary').unblock()
+        $('.summary__subtotal').html(data.localed_total)
+        $('[name="js-weight"]').data('value', data.weight)
+        $('[name="js-subtotal"]').data('value', data.total)
+
+        $(window).trigger('lx:product_price_updated')
+
+        if (data.multi_artwork_pricing_table) {
+          $('.js-pricing-table').html(data.multi_artwork_pricing_table)
+          LxProductMultiArtworks.watchInput()
+        }
+
+        if (data.need_rebuild_printing_speed) {
+          LxProductSingle.rebuildPrintingSpeed(data.need_rebuild_printing_speed)
+        }
+      })
+    },
+
+    /** Update printing speed option, label and value */
+    rebuildPrintingSpeed: function (printingSpeeds) {
+      for (var i in printingSpeeds.data) {
+        var ele = printingSpeeds.data[i]
+        var $input = $('[name="printing_speed"][value="' + i + '"]')
+        var $label = $input.siblings('.option__card ')
+
+        $input.data('days_need', ele.days_need)
+        $label.find('.option__remarks').text(ele.remarks)
+        $label.find('.option__label').text(ele.label)
+      }
+
+      LxProductSingle.updateSummaryRow($('[name="printing_speed"]:checked'))
+      $('[name="_printing_data"]').val(printingSpeeds.encoded)
+    }
+
+  })
+
+  LxProductSingle.init()
+})(jQuery)
