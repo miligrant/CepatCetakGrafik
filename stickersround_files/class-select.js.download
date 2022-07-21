@@ -1,0 +1,398 @@
+(function ($) {
+  var timer__make_modal_backdrop_clickable
+  window.selectizeConfig = (function () {
+    var init = function (obj) {
+      obj.$control_input.attr('readonly', true)
+
+      // var that = obj;
+
+      // obj.$control.on("click", function() {
+      // 	that.ignoreFocusOpen = true;
+      // 	setTimeout(function() {
+      // 		that.ignoreFocusOpen = false;
+      // 	}, 50);
+      // });
+    }
+
+    var onfocus = function (obj) {
+      if (!obj.ignoreFocusOpen) {
+        obj.open()
+      }
+    }
+
+    var normal = {
+      // openOnFocus: false,
+
+      // onInitialize: function() {
+      // 	init(this);
+      // },
+      onItemAdd: function () {
+        var input = this.$input
+        input.trigger('selectize:itemadded')
+      },
+
+      onDropdownOpen: function () {
+        if ($('.modal.fade.show').length) {
+          $('.modal.fade.show').addClass('js-modal-disabled')
+        }
+        // onfocus(this);
+      },
+      onBlur: function () {
+        clearTimeout(timer__make_modal_backdrop_clickable)
+        timer__make_modal_backdrop_clickable = setTimeout(function () {
+          $('.js-modal-disabled').removeClass('js-modal-disabled')
+        }, 500)
+      },
+      onDropdownClose: function () {
+        var input = this.$input
+
+        input.timer__close = setTimeout(function () {
+          // prevent it trigger twice.
+          clearTimeout(input.timer__close)
+          input.trigger('selectize:close')
+        }, 200)
+      }
+    }
+
+    var priceRender = {
+      optHtml: function (data1) {
+        return (
+          "<div class='option' data-price='" +
+          data1.price +
+          "'><span class='item-text'>" +
+          data1.text +
+          "</span><span class='item-price'>" +
+          data1.label +
+          '</span></div>'
+        )
+      },
+      render: {
+        option: function (data) {
+          return priceRender.optHtml(data)
+        },
+
+        item: function (data) {
+          return priceRender.optHtml(data)
+        }
+      }
+    }
+
+    var price = $.extend({}, normal, priceRender)
+
+    var tabRender = {
+      optHtml: function (data1) {
+        // var icon = atob(data1.icon)
+        var text = data1.text
+
+        return (
+          "<div class='option'>" +
+          '<span class="f-md font-primary">' +
+          text +
+          '</span></div>'
+        )
+      },
+      render: {
+        option: function (data) {
+          return tabRender.optHtml(data)
+        },
+
+        item: function (data) {
+          return tabRender.optHtml(data)
+        }
+      }
+    }
+
+    var tabs = $.extend({}, normal, tabRender)
+
+    var templateRender = {
+      optHtml: function (data1) {
+        var icon = $.base64.decode(data1.icon)
+
+        return (
+          "<div class='option'><img class='template__nav-thumb' src='/img/products/" +
+          icon +
+          "'>" +
+          data1.text +
+          '</div>'
+        )
+      },
+      render: {
+        option: function (data) {
+          return templateRender.optHtml(data)
+        },
+
+        item: function (data) {
+          return templateRender.optHtml(data)
+        }
+      }
+    }
+
+    var templates = $.extend({}, normal, templateRender)
+
+    var urgentRender = {
+      optHtml: function (data1) {
+        return (
+          "<div class='option' data-price='" +
+          data1.price +
+          "' data-days='" +
+          data1.days +
+          "'><span class='item-text'>" +
+          data1.text +
+          "</span><span class='item-price'>" +
+          data1.label +
+          '</span></div>'
+        )
+      },
+      render: {
+        option: function (data) {
+          return urgentRender.optHtml(data)
+        },
+
+        item: function (data) {
+          return urgentRender.optHtml(data)
+        }
+      }
+    }
+
+    var urgent = $.extend({}, normal, urgentRender)
+
+    return {
+      price: price,
+      normal: normal,
+      tabs: tabs,
+      templates: templates,
+      urgent: urgent
+    }
+  })()
+
+  window.selectCustom = (function () {
+    var modalId = '#custom_size'
+    var formId = '#custom_size_form'
+    var customSize = {}
+    var modalCloseButton
+    var selectize
+    var ele
+    var isInit = 1
+    var initDone
+    var prev_size
+    var remark = 'Between {{min}} and {{max}}'
+
+    var addToSelect = function (size) {
+      params = size.converted_h + ' x ' + size.converted_w + ' x 1'
+      text = size.h + ' x ' + size.w + ' ' + size.new_unit
+
+      if (size.new_unit !== 'mm') {
+        text += ' (' + size.converted_h + 'mm x ' + size.converted_w + 'mm )'
+      }
+
+      if (text == prev_size) {
+        return
+      }
+
+      $clone_input = ele
+        .clone(false)
+        .prop('checked', false)
+        .prop('id', text)
+        .prop('value', params)
+      $label = ele.next('label')
+      $label.after($clone_input)
+
+      $clone_label = $label.clone(false).prop('for', text)
+      $circle_icon = $clone_label.find('.check-circle')
+      $clone_label.text(text).prepend($circle_icon)
+      $clone_input.after($clone_label)
+      prev_size = text
+
+      if (!func.is_mobile()) {
+        $('.p_option__panels .select')
+          .niceScroll(config.nicescroll)
+          .resize()
+      }
+    }
+
+    var submit = function () {
+      $(formId).on('submit', function (e) {
+        e.preventDefault()
+
+        $(modalId).modal('hide')
+
+        input_h = $(formId)
+          .find('input[name=custom_height]')
+          .val()
+
+        input_w = $(formId)
+          .find('input[name=custom_width]')
+          .val()
+
+        newUnit = size_limit.unit
+        conv = getConversionBack(newUnit)
+
+        customSize = {
+          h: input_h,
+          w: input_w,
+          converted_h: +(input_h * conv).toFixed(2),
+          converted_w: +(input_w * conv).toFixed(2),
+          new_unit: newUnit
+        }
+
+        addToSelect(customSize)
+        ele.data('prev', ele.val())
+      })
+    }
+    var updateMinMax = function (size_limit) {
+      remark_text = remark
+        .replace('{{min}}', size_limit.min + ' ' + size_limit.unit)
+        .replace('{{max}}', size_limit.max + ' ' + size_limit.unit)
+
+      $('#custom_size_form .remark').text(remark_text)
+
+      $('#custom_size_form input[type="number"]').attr({
+        max: size_limit.max,
+        min: size_limit.min
+      })
+    }
+    var init = function (_ele) {
+      ele = _ele
+
+      max_dimensions = ele.val()
+      max_dimensions = max_dimensions.split(' x ')
+      max_dimensions.sort(function (a, b) {
+        return a - b
+      })
+
+      size_limit = {
+        min: max_dimensions[1],
+        max: max_dimensions[2],
+        default_min: max_dimensions[1],
+        default_max: max_dimensions[2],
+        unit: 'mm'
+      }
+
+      modalCloseButton = $(modalId).find('.modal-close')
+
+      updateMinMax(size_limit)
+
+      $('#custom_size_form_cancel').hide()
+      modalCloseButton.hide()
+
+      ele.data('prev', ele.val())
+
+      ele.change(function () {
+        watch()
+      })
+
+      $('#custom_size_change_unit').change(function () {
+        newUnit = $(this).val()
+        conv = getConversion(newUnit)
+
+        size_limit.min = +(size_limit.default_min * conv).toFixed(2)
+        size_limit.max = +(size_limit.default_max * conv).toFixed(2)
+        size_limit.unit = newUnit
+
+        updateMinMax(size_limit)
+      })
+
+      ele.trigger('change')
+    }
+    var getConversion = function (new_unit) {
+      // mm
+      if (new_unit == 'mm') conv = 1
+      if (new_unit == 'cm') conv = 0.1
+      if (new_unit == 'in') conv = 0.0393701
+      if (new_unit == 'ft') conv = 0.00328084
+      return conv
+    }
+    var getConversionBack = function (new_unit) {
+      // mm
+      if (new_unit == 'ft') conv = 304.8
+      if (new_unit == 'in') conv = 25.4
+      if (new_unit == 'cm') conv = 10
+      if (new_unit == 'mm') conv = 1
+      return conv
+    }
+
+    var watch = function () {
+      if (ele.prop('checked')) {
+        // user clicked the custom size
+        if (!initDone) {
+          if (isInit == 1) {
+            // no data set yet, dont allow them to close the modal easily yet
+            $(modalId).modal({
+              backdrop: 'static',
+              keyboard: false
+            })
+          } else {
+            // data have set, modal can be close now by clicking outside and keyboard
+            $(modalId)
+              .modal('dispose')
+              .modal('show')
+
+            // now all init has done, set the flag and no need to check again in future
+            initDone = true
+          }
+        } else {
+          $(modalId).modal('show')
+        }
+
+        $(modalId).on('hidden.bs.modal', function () {
+          // selectize.addItem(ele.data('prev'));
+
+          // user have set some data in
+          if (isInit == 1) {
+            isInit = 0
+          }
+
+          $('#custom_size_form_cancel').show()
+          modalCloseButton.show()
+        })
+
+        submit()
+      } else {
+        ele.data('prev', ele.val())
+      }
+    }
+
+    return {
+      init: init
+    }
+  })()
+
+  $(document).ready(function () {
+    // all select but not the one with price
+    // $('select:not(.select--special)').selectize(selectizeConfig.normal);
+    // woocommerce select
+    $('.woocommerce-input-wrapper select, .lx-select').selectize(
+      selectizeConfig.normal
+    )
+
+    // select with price
+    $('.select--price').selectize(selectizeConfig.price)
+
+    // select for tabs, mobile only
+    $('.select--tabs').selectize(selectizeConfig.tabs)
+
+    // select for templates, mobile only
+    $('.select--tabs-img').selectize(selectizeConfig.templates)
+
+    // update visible tab when select is changed
+    $('.select--tabs, .select--tabs-img').change(function () {
+      // get selected tab id
+      var selectedTab = $(this)
+        .children('option:selected')
+        .val()
+
+      if (~selectedTab.indexOf('/')) {
+        window.location.href = selectedTab
+      } else {
+        // show the tab
+        $('a[href="#' + selectedTab + '"]').tab('show')
+
+        $('.slick-slider').slick('setPosition')
+      }
+    })
+
+    if ($('#custom[name="ProductSizeParam"]').length) {
+      selectCustom.init($('#custom[name="ProductSizeParam"]'))
+    }
+  })
+})(jQuery)

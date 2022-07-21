@@ -1,0 +1,161 @@
+(function ($) {
+  window.LxProductShipping = function () { }
+
+  $.extend(LxProductShipping, {
+
+    /** Initialize. */
+    init: function () {
+      this.form = $('form#shippingCalculator')
+      this.setDefault()
+      this.watchValidate()
+      this.watchFlags()
+      this.watchPriceUpdate()
+    },
+
+    watchFlags: function () {
+      $('.shipping__flag').click(function () {
+        if (!$(this).hasClass('active')) {
+          $('#shippingOptions').html('')
+
+          // add active class.
+          $('.shipping__flag.active').removeClass('active')
+          $(this).addClass('active')
+
+          // set value.
+          $('input[name="calc_shipping_postcode"]').val($(this).data('postcode'))
+
+          var country = $(this).data('country')
+
+          if (country !== 'my') {
+            // country other than my no need fill postcode.
+            $('#shippingCalculator').addClass('shipping-others')
+            $('#shippingCalculator input.form-control').removeClass('error').prop('disabled', true)
+            LxProductShipping.validator.resetForm()
+            LxProductShipping.calculateShipping()
+          } else {
+            // is my.
+            $('#shippingCalculator').removeClass('shipping-others')
+            $('#shippingCalculator input.form-control').prop('disabled', false)
+            // $('#shippingCalculator').removeClass('d-none')
+          }
+        }
+      })
+    },
+    watchPriceUpdate: function () {
+      $(window).on('lx:product_price_updated', function () {
+        if (LxProductShipping.validator.form()) {
+          //  validated.
+          LxProductShipping.calculateShipping()
+        }
+      })
+    },
+    watchValidate: function () {
+      this.validator = this.form.validate({
+        onsubmit: false,
+        errorLabelContainer: '.error-msg'
+      })
+
+      $("[name='calc_shipping']").click(function (e) {
+        e.preventDefault()
+
+        if (LxProductShipping.validator.form()) {
+          //  validated.
+          LxProductShipping.calculateShipping()
+        } else {
+          pr_nicescroll.re_init()
+          $('#shippingCalculator input.error').first().focus()
+        }
+      })
+    },
+
+    setDefault: function () {
+      var defaults = [
+        'subtotal', 'weight'
+      ]
+
+      for (let index = 0; index < defaults.length; index++) {
+        var input = $('input[name="js-' + defaults[index] + '"]')
+        input.data('value', input.val())
+        input.removeAttr('value')
+      }
+    },
+
+    calculateShipping: function () {
+      if (LxProductSingle.isAllFieldsSelected() !== 2) {
+        // only proceed if all fields are check.
+        toka_toast.show_notice('Please select all product configuration.', 1)
+        return
+      }
+
+      $('.product__summary').block()
+      $('#shippingOptions').html('')
+      var input = $('[name="calc_shipping_postcode"]')
+
+      var formData = $.param({
+        PostCode: input.val(),
+        ProductID: $('input[name="ProductID"]').val(),
+        currency: $('#lx_product_form input[name="currency"]').val(),
+        Weight: $('input[name="js-weight"]').data('value'),
+        nonce: $('input[name="shipping-calculator-nonce"]').val(),
+        action: 'printoka_get_api_courier_fee'
+      })
+
+      var posting = $.post(lx_post.ajax_url, formData)
+
+      posting.done(function (data) {
+        $('.product__summary').unblock()
+
+        $('.summary__shipping').html(data.summary)
+
+        LxProductShipping.updateTotal(data.fee)
+
+        if (data.options) {
+          $('#shippingOptions').html(data.options)
+
+          $('.shipping__option').each(function () {
+            var fee = $(this).data('js-fee')
+            $(this).data('fee', fee).removeAttr('data-js-fee')
+          })
+
+          LxProductShipping.updateShippingValue()
+
+          $('.shipping__option').click(function () {
+            if (!$(this).hasClass('active')) {
+              $('.shipping__option.active').removeClass('active')
+              $(this).addClass('active')
+
+              LxProductShipping.updateTotal($(this).data('fee'))
+              $('.summary__shipping').html($(this).data('js-title'))
+
+              LxProductShipping.updateShippingValue()
+            }
+          })
+        }
+      })
+    },
+
+    updateShippingValue: function () {
+      var selectShippingMethod = $('#shippingOptions [name="chosen_shipping"]:checked').val()
+      $('form.product__summary [name="chosen_shipping_method"]').val(selectShippingMethod)
+    },
+
+    updateTotal: function (shipping_fee) {
+      $('form.product__summary').toggleClass('disabled', !shipping_fee)
+
+      if (!shipping_fee) {
+        $('.summary__total').html('-')
+        toka_toast.show_notice('No shipping method available, please try another postcode.', 1)
+        return
+      }
+
+      var subtotal = $('input[name="js-subtotal"]').data('value')
+      var total = parseFloat(shipping_fee) + parseFloat(subtotal)
+      var currencySymbol = lx_post.currency_symbol
+
+      $('.summary__total').html(currencySymbol + total.toFixed(2))
+    }
+
+  })
+
+  LxProductShipping.init()
+})(jQuery)

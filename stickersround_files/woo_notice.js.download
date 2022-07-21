@@ -1,0 +1,114 @@
+(function ($) {
+  window.toka_toast = (function () {
+    var watch_woo_notice = function (toastify) {
+      var messagesToShow = {}
+
+      // check if doc has show notice hidden field.
+      if ($('input[name="show_notice"], .woocommerce-error, .woocommerce-message, .woocommerce-info').length) {
+        $('input[name="show_notice"], .woocommerce-error, .woocommerce-message, .woocommerce-info').each(function () {
+          var $this = $(this)
+          var isError = 0
+          var text = ''
+
+          if ($this.data('type')) {
+            text = $this.val()
+            isError = $this.data('type')
+          } else {
+            text = $this.text()
+            isError = $this.is('.woocommerce-error, .woocommerce-info') ? 1 : 0
+          }
+
+          text = $.trim(text)
+
+          if (!text) {
+            return
+          }
+
+          messagesToShow[text] = isError
+
+          $this.remove()
+        })
+      }
+
+      $(document).ajaxComplete(function () {
+        if (!$('.woocommerce-error, .woocommerce-message').length) {
+          // no woocommerce msg, exit
+          return
+        }
+
+        // stop moving to notice.
+        $('html, body').stop()
+
+        // remove the previous notice.
+        $('.show_notice').remove()
+
+        var is_error = $('.woocommerce-error').length ? 1 : 0
+        var $ele = is_error
+          ? $('.woocommerce-error')
+          : $('.woocommerce-message')
+
+        // get the notice text.
+        var msg = $ele.text().trim()
+        // remove double space
+        var msg = msg.replace(/\s+/g, ' ')
+
+        // remove duplicate
+        var arr = $.unique($.map(msg.split('.'), $.trim))
+
+        console.log(arr)
+
+        if (arr[0].startsWith('Member Discount')) {
+          arr.shift()
+        }
+
+        var msg = arr.join('. ')
+
+        show_notice(msg, is_error)
+
+        $ele.remove()
+      })
+
+      $.each(messagesToShow, function (text, isError) {
+        show_notice(text, isError, isError)
+      })
+    }
+    var show_notice = function (msg, is_error, longer_duration) {
+      longer_duration = longer_duration || 0
+
+      // notice text is empty, abort
+      if (!msg.length) {
+        return
+      }
+
+      var icon = is_error ? 'failed1' : 'checkmark2'
+
+      msg = '<img src="/media/' + icon + '.svg" class="mr-25" height="23">' + msg
+
+      Toastify({
+        text: msg,
+        className: is_error ? 'error' : '',
+        duration: longer_duration ? 10000 : 5000,
+        close: true,
+        gravity: 'top',
+        position: 'center',
+        stopOnFocus: true
+      }).showToast()
+    }
+
+    return {
+      watch_woo_notice: watch_woo_notice,
+      show_notice: show_notice
+    }
+  })()
+
+  var toastify = Toastify({
+    text: '',
+    duration: 5000,
+    close: true,
+    gravity: 'top', // `top` or `bottom`
+    position: 'center', // `left`, `center` or `right`
+    stopOnFocus: true // Prevents dismissing of toast on hover
+  })
+
+  toka_toast.watch_woo_notice(toastify)
+})(jQuery)
